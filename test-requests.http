@@ -1,0 +1,153 @@
+@baseUrl = http://localhost:5000
+@apiUrl = {{baseUrl}}/api
+
+### Variables (update these after login)
+@token =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0LCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJpYXQiOjE3NjMwNzgyNzYsImV4cCI6MTc2MzE2NDY3Nn0.ygof_CHRVzPoNUQgcrdXbL9dsDP4oy7zKknvLiJkRTk
+@taskId =37
+
+
+GET {{baseUrl}}/
+
+
+### === Authentication Routes ===
+
+
+### register new user
+POST {{apiUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "password": "password123",
+  "first_name": "New",
+  "last_name": "User"
+}
+
+### login user
+# @name login
+POST {{apiUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### get user profile (requires auth)
+GET {{apiUrl}}/auth/profile
+Authorization: Bearer {{token}}
+
+
+### === Task Routes (all require authentication) ===
+
+
+### Get all tasks for authenticated user
+GET {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+
+### get all tasks filtered by status
+GET {{apiUrl}}/tasks?status=new
+Authorization: Bearer {{token}}
+
+### get all tasks filtered by priority
+GET {{apiUrl}}/tasks?priority=high
+Authorization: Bearer {{token}}
+
+### Get all tasks filtered by both status and priority
+GET {{apiUrl}}/tasks?status=in_progress&priority=high
+Authorization: Bearer {{token}}
+
+### get single task by ID
+GET {{apiUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+
+### create new task
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Complete Phase 1 tasks",
+  "description": "Finish all backend implementation tasks",
+  "status": "new",
+  "priority": 3,
+  "due_date": "2024-12-31T23:59:59Z"
+}
+
+### create task with minimal fields
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Simple task"
+}
+
+### ppdate entire task (PUT)
+PUT {{apiUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Updated task title",
+  "description": "Updated description",
+  "status": "in_progress",
+  "priority": 2,
+  "due_date": "2024-12-25T12:00:00Z"
+}
+
+### update task status only (PATCH)
+PATCH {{apiUrl}}/tasks/{{taskId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "completed"
+}
+
+### Delete task
+DELETE {{apiUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+
+
+### === Error Test Cases ---
+
+### test invalid login
+POST {{apiUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "wrongpassword"
+}
+
+### test creating task without auth
+POST {{apiUrl}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Should fail"
+}
+
+### Test invalid task data
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "invalid_status",
+  "priority": 99
+}
+
+### test task with assigned_to
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Task assigned to another user",
+  "description": "This task is assigned to user 2",
+  "assigned_to": 2,
+  "priority": 3
+}
+
