@@ -1,16 +1,25 @@
-# TaskHub Backend API
+# TaskHub
 
-Backend API for TaskHub task management application built with Node.js, Express.js, and PostgreSQL (via Supabase).
+Full-stack task management application built with PERN stack (PostgreSQL, Express, React, Node.js).
 
 ## Quick Start
 
 ### 1. Install Dependencies
+
+**Backend:**
 ```bash
 npm install
 ```
 
+**Frontend:**
+```bash
+cd client
+npm install
+```
+
 ### 2. Setup Environment Variables
-Create a `.env` file with:
+
+Create a `.env` file in the root directory:
 ```
 SUPABASE_HOST=your-supabase-host
 SUPABASE_PORT=5432
@@ -22,6 +31,7 @@ PORT=5000
 ```
 
 ### 3. Setup Database
+
 Run `db/schema.sql` in your Supabase SQL editor to create tables.
 
 ### 4. Seed Test Data (Optional)
@@ -30,13 +40,20 @@ npm run seed
 ```
 Test credentials: `test@example.com` / `password123`
 
-### 5. Start Server
+### 5. Start Application
+
+**Terminal 1 - Backend:**
 ```bash
 npm run dev    # Development mode
-npm start      # Production mode
 ```
+Backend runs on `http://localhost:5000`
 
-Server runs on `http://localhost:5000`
+**Terminal 2 - Frontend:**
+```bash
+cd client
+npm start
+```
+Frontend runs on `http://localhost:3000`
 
 ## API Endpoints
 
@@ -65,15 +82,22 @@ Use `test-requests.http` with REST Client (VS Code) or Postman:
 ## Project Structure
 
 ```
-├── server.js              # Entry point
-├── db/
-│   ├── config.js          # Database connection
-│   ├── schema.sql         # Database schema
-│   └── seed.js            # Seed script
-├── routes/                # API routes
-├── controllers/           # Business logic
-├── middleware/            # Auth & error handling
-└── utils/                 # Utilities
+├── server.js              # Backend entry point
+├── db/                     # Database files
+│   ├── config.js
+│   ├── schema.sql
+│   └── seed.js
+├── routes/                 # API routes
+├── controllers/            # Business logic
+├── middleware/             # Auth & error handling
+├── utils/                  # Utilities
+└── client/                 # React frontend
+    ├── src/
+    │   ├── components/     # React components
+    │   ├── pages/           # Page components
+    │   ├── services/        # API services
+    │   └── router/          # Routing
+    └── public/
 ```
 
 ## Response Format
