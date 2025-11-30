@@ -2,7 +2,7 @@
 const { query } = require('../db/config');
 const { logInfo, logError } = require('../utils/logger');
 
-// --- GET ALL TASKS ---
+// --- GET ALL TASKS WITH ADVANCED FILTERING AND SORTING ---
 async function getAllTasks( req, res, next )
 {
     // start try catch block on get all tasks
@@ -10,45 +10,172 @@ async function getAllTasks( req, res, next )
     {
         // get user id from request
         const userId = req.user.user_id;
-        const { status, priority } = req.query;
+        const { 
+            status, 
+            priority, 
+            start_date, 
+            end_date, 
+            due_date_start, 
+            due_date_end,
+            search,
+            sort_by = 'created_at',
+            sort_order = 'DESC',
+            page = 1,
+            limit = 50,
+            assigned_to
+        } = req.query;
 
-        // build query - user can see tasks they created OR are assigned to
-        let sqlQuery = 'SELECT * FROM tasks WHERE created_by = $1 OR assigned_to = $1';
+        // build base WHERE clause - user can see tasks they created OR are assigned to
+        let whereClause = 'WHERE (created_by = $1 OR assigned_to = $1)';
         const queryParams = [userId];
         let paramIndex = 2;
 
-        // if status is provided, add to query
+        // Status filter - support multiple statuses (comma-separated)
         if ( status )
         {
-            sqlQuery += ` AND status = $${paramIndex}`;
-            queryParams.push(status);
-            paramIndex++;
+            const statuses = status.split(',').map(s => s.trim());
+            if (statuses.length === 1)
+            {
+                whereClause += ` AND status = $${paramIndex}`;
+                queryParams.push(statuses[0]);
+                paramIndex++;
+            }
+            else
+            {
+                whereClause += ` AND status = ANY($${paramIndex})`;
+                queryParams.push(statuses);
+                paramIndex++;
+            }
         }
 
-        // if priority is provided, add to query
+        // Priority filter - support multiple priorities
         if ( priority )
         {
-            // Convert string priority to integer if needed
-            let priorityInt = priority;
-            if ( typeof priority === 'string' )
-            {
-                priorityInt = priority === 'low' ? 1 : priority === 'medium' ? 2 : priority === 'high' ? 3 : parseInt( priority );
+            const priorities = priority.split(',').map(p => {
+                const trimmed = p.trim();
+                if (trimmed === 'low') return 1;
+                if (trimmed === 'medium') return 2;
+                if (trimmed === 'high') return 3;
+                return parseInt(trimmed);
+            }).filter(p => !isNaN(p));
+            
+            if ( priorities.length === 1 )
+                {
+                whereClause += ` AND priority = $${paramIndex}`;
+                queryParams.push(priorities[0]);
+                paramIndex++;
             }
-            sqlQuery += ` AND priority = $${paramIndex}`;
-            queryParams.push( priorityInt );
+            else if ( priorities.length > 1 )
+            {
+                whereClause += ` AND priority = ANY($${paramIndex})`;
+                queryParams.push(priorities);
+                paramIndex++;
+            }
+        }
+
+        // Date range filter for created_at
+        if ( start_date )
+        {
+            whereClause += ` AND created_at >= $${paramIndex}`;
+            queryParams.push(start_date);
+            paramIndex++;
+        }
+        if ( end_date )
+        {
+            whereClause += ` AND created_at <= $${paramIndex}`;
+            queryParams.push(end_date);
             paramIndex++;
         }
 
-        // add order by created_at descending to query
-        sqlQuery += ' ORDER BY created_at DESC';
+        // Due date range filter
+        if ( due_date_start )
+        {
+            whereClause += ` AND due_date >= $${paramIndex}`;
+            queryParams.push(due_date_start);
+            paramIndex++;
+        }
+        if ( due_date_end )
+        {
+            whereClause += ` AND due_date <= $${paramIndex}`;
+            queryParams.push(due_date_end);
+            paramIndex++;
+        }
+
+        // Assigned to filter
+        if ( assigned_to )
+        {
+            const assignedToInt = parseInt(assigned_to);
+            if (!isNaN(assignedToInt)) {
+                whereClause += ` AND assigned_to = $${paramIndex}`;
+                queryParams.push(assignedToInt);
+                paramIndex++;
+            }
+        }
+
+        // Full-text search on title and description
+        // Note: Requires migration 003_add_fulltext_search_indexes.sql to be run
+        if ( search && search.trim() !== '' )
+        {
+            // Try to use search_vector if available, otherwise fall back to ILIKE
+            // For now, use ILIKE which works without migrations
+            const searchTerm = `%${search.trim()}%`;
+            whereClause += ` AND (title ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+            queryParams.push(searchTerm);
+            paramIndex++;
+        }
+
+        // Get total count for pagination (before adding ORDER BY and LIMIT/OFFSET)
+        // Build count query from WHERE clause only
+        const countQuery = `SELECT COUNT(*) as total FROM tasks ${whereClause}`;
+        const countResult = await query(countQuery, queryParams);
+        const totalCount = parseInt(countResult.rows[0].total);
+
+        // Build main query with SELECT *
+        let sqlQuery = `SELECT * FROM tasks ${whereClause}`;
+
+        // Validate and set sort_by
+        const validSortFields = ['created_at', 'updated_at', 'due_date', 'priority', 'status', 'title'];
+        const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at';
+        const sortDirection = sort_order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+        // Add sorting - support multiple sort fields (comma-separated)
+        const sortFields = sortField.split(',').map(s => s.trim()).filter(s => validSortFields.includes(s));
+        if ( sortFields.length > 0 )
+        {
+            const sortClauses = sortFields.map(field => {
+                // Special handling for priority (numeric sort)
+                if ( field === 'priority' )
+                {
+                    return `priority ${sortDirection}`;
+                }
+                return `${field} ${sortDirection}`;
+            });
+            sqlQuery += ` ORDER BY ${sortClauses.join(', ')}`;
+        }
+        else
+        {
+            sqlQuery += ' ORDER BY created_at DESC';
+        }
+
+        // Add pagination
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 50)); // Max 100 per page
+        const offset = (pageNum - 1) * limitNum;
+        
+        sqlQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+        queryParams.push(limitNum, offset);
 
         // execute query
         const result = await query(sqlQuery, queryParams);
 
-        // return success response
+        // return success response with pagination info
         res.json({
             success: true,
             count: result.rows.length,
+            total: totalCount,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(totalCount / limitNum),
             data: {
                 tasks: result.rows
             }
@@ -420,6 +547,135 @@ async function deleteTask( req, res, next )
     }
 }
 
+// --- ASSIGN TASK TO USER ---
+async function assignTask( req, res, next )
+{
+    // start try catch block on assign task
+    try
+    {
+        // get user id from request
+        const userId = req.user.user_id;
+        const taskId = req.params.id;
+        const { assigned_to } = req.body;
+
+        // validate assigned_to is provided
+        if ( assigned_to === undefined || assigned_to === null )
+        {
+            return res.status(400).json({
+                success: false,
+                error: 'assigned_to field is required'
+            });
+        }
+
+        // check if task exists and user has permission (created it)
+        const checkResult = await query(
+            'SELECT task_id, title, created_by FROM tasks WHERE task_id = $1 AND created_by = $2',
+            [taskId, userId]
+        );
+
+        // if task not found, return 404 error
+        if ( checkResult.rows.length === 0 )
+        {
+            return res.status(404).json({
+                success: false,
+                error: 'Task not found or you do not have permission to assign it'
+            });
+        }
+
+        // if assigned_to is provided, verify user exists
+        if ( assigned_to !== null )
+        {
+            const userCheck = await query(
+                'SELECT user_id FROM users WHERE user_id = $1',
+                [assigned_to]
+            );
+
+            if ( userCheck.rows.length === 0 )
+            {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Assigned user does not exist'
+                });
+            }
+        }
+
+        // update task assignment
+        const result = await query(
+            'UPDATE tasks SET assigned_to = $1 WHERE task_id = $2 RETURNING *',
+            [assigned_to || null, taskId]
+        );
+
+        // log task assignment
+        logInfo(`Task ${taskId} assigned to user ${assigned_to || 'unassigned'} by user ${userId}`);
+
+        // return success response
+        res.json({
+            success: true,
+            message: assigned_to ? 'Task assigned successfully' : 'Task unassigned successfully',
+            data: {
+                task: result.rows[0]
+            }
+        });
+    }
+    catch ( error )
+    {
+        logError('Assign task error:', error);
+        
+        // handle database constraint errors
+        if ( error.code === '23503' )
+        {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid user ID for assigned_to'
+            });
+        }
+        
+        next(error);
+    }
+}
+
+// --- GET TASKS ASSIGNED TO SPECIFIC USER ---
+async function getTasksByAssignee( req, res, next )
+{
+    // start try catch block
+    try
+    {
+        const assigneeId = parseInt(req.params.userId);
+        const currentUserId = req.user.user_id;
+
+        // Validate assigneeId
+        if ( isNaN(assigneeId) )
+        {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid user ID'
+            });
+        }
+
+        // User can only see tasks assigned to them, or tasks they created
+        // For now, allow users to see tasks assigned to any user (team collaboration)
+        // In a more restricted system, you might want to limit this to same team/org
+        const result = await query(
+            'SELECT * FROM tasks WHERE assigned_to = $1 AND (created_by = $2 OR assigned_to = $2) ORDER BY created_at DESC',
+            [assigneeId, currentUserId]
+        );
+
+        // return success response
+        res.json({
+            success: true,
+            count: result.rows.length,
+            data: {
+                tasks: result.rows
+            }
+        });
+    }
+    catch ( error )
+    {
+        logError('Get tasks by assignee error:', error);
+        next(error);
+    }
+}
+
 // export taskController functions
 module.exports = {
     getAllTasks,
@@ -427,6 +683,8 @@ module.exports = {
     createTask,
     updateTask,
     updateTaskStatus,
-    deleteTask
+    deleteTask,
+    assignTask,
+    getTasksByAssignee
 };
 

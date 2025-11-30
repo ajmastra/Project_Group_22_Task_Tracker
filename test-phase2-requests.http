@@ -1,0 +1,546 @@
+@baseUrl = http://localhost:5000
+@apiUrl = {{baseUrl}}/api
+
+### Variables (will be set automatically after login)
+@token = 
+@taskId = 55
+@userId = 20
+@notificationId = 1
+@otherUserId = 16
+
+
+### === Authentication Routes ===
+
+### Register new user (for testing)
+POST {{apiUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser2@example.com",
+  "password": "password123",
+  "first_name": "Test",
+  "last_name": "User2"
+}
+
+### Login user (extracts token automatically - click "Send Request" then use token below)
+# @name login
+POST {{apiUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Get user profile
+GET {{apiUrl}}/auth/profile
+Authorization: Bearer {{token}}
+
+
+### === Task Routes - Phase 2 Enhanced Features ===
+
+### Get all tasks (basic)
+GET {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+
+### Get tasks with advanced filtering - Multiple statuses
+GET {{apiUrl}}/tasks?status=new,in_progress
+Authorization: Bearer {{token}}
+
+### Get tasks with advanced filtering - Multiple priorities
+GET {{apiUrl}}/tasks?priority=high,medium
+Authorization: Bearer {{token}}
+
+### Get tasks with date range filter (created_at)
+GET {{apiUrl}}/tasks?start_date=2024-01-01T00:00:00Z&end_date=2024-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Get tasks with due date range filter
+GET {{apiUrl}}/tasks?due_date_start=2024-12-01T00:00:00Z&due_date_end=2024-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Get tasks assigned to specific user
+GET {{apiUrl}}/tasks?assigned_to={{userId}}
+Authorization: Bearer {{token}}
+
+### Get tasks with full-text search
+GET {{apiUrl}}/tasks?search=urgent important
+Authorization: Bearer {{token}}
+
+### Get tasks with sorting by due_date
+GET {{apiUrl}}/tasks?sort_by=due_date&sort_order=ASC
+Authorization: Bearer {{token}}
+
+### Get tasks with sorting by priority
+GET {{apiUrl}}/tasks?sort_by=priority&sort_order=DESC
+Authorization: Bearer {{token}}
+
+### Get tasks with pagination
+GET {{apiUrl}}/tasks?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get tasks with all filters combined
+GET {{apiUrl}}/tasks?status=in_progress,completed&priority=high&search=urgent&sort_by=due_date&sort_order=ASC&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Get single task by ID
+GET {{apiUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+
+### Create new task
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Phase 2 Test Task",
+  "description": "Testing Phase 2 features",
+  "status": "new",
+  "priority": "high",
+  "due_date": "2024-12-31T23:59:59Z"
+}
+
+### Create task and assign to another user
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Assigned Task",
+  "description": "This task will be assigned to another user",
+  "status": "new",
+  "priority": 3,
+  "assigned_to": {{otherUserId}}
+}
+
+### Update task
+PUT {{apiUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Updated Task Title",
+  "description": "Updated description",
+  "status": "in_progress",
+  "priority": 2
+}
+
+### Assign task to user (NEW Phase 2 endpoint)
+PUT {{apiUrl}}/tasks/{{taskId}}/assign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assigned_to": {{otherUserId}}
+}
+
+### Unassign task (set assigned_to to null)
+PUT {{apiUrl}}/tasks/{{taskId}}/assign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assigned_to": null
+}
+
+### Update task status
+PATCH {{apiUrl}}/tasks/{{taskId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "completed"
+}
+
+### Get tasks assigned to specific user (NEW Phase 2 endpoint)
+GET {{apiUrl}}/tasks/assigned-to/{{userId}}
+Authorization: Bearer {{token}}
+
+### Delete task
+DELETE {{apiUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{token}}
+
+
+### === User Management Routes (NEW Phase 2) ===
+
+### Get all users
+GET {{apiUrl}}/users
+Authorization: Bearer {{token}}
+
+### Get all users with pagination
+GET {{apiUrl}}/users?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get all users with search
+GET {{apiUrl}}/users?search=test
+Authorization: Bearer {{token}}
+
+### Get user by ID
+GET {{apiUrl}}/users/{{userId}}
+Authorization: Bearer {{token}}
+
+
+### === Notification Routes (NEW Phase 2) ===
+
+### Get all notifications
+GET {{apiUrl}}/notifications
+Authorization: Bearer {{token}}
+
+### Get all notifications with pagination
+GET {{apiUrl}}/notifications?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get unread notifications only
+GET {{apiUrl}}/notifications?read_status=false
+Authorization: Bearer {{token}}
+
+### Get read notifications only
+GET {{apiUrl}}/notifications?read_status=true
+Authorization: Bearer {{token}}
+
+### Get notifications by type
+GET {{apiUrl}}/notifications?type=assignment
+Authorization: Bearer {{token}}
+
+### Get notifications with all filters
+GET {{apiUrl}}/notifications?read_status=false&type=assignment&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Get notification by ID
+GET {{apiUrl}}/notifications/{{notificationId}}
+Authorization: Bearer {{token}}
+
+### Create notification manually
+POST {{apiUrl}}/notifications
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "user_id": {{userId}},
+  "task_id": {{taskId}},
+  "message": "Test notification message",
+  "type": "info"
+}
+
+### Create assignment notification
+POST {{apiUrl}}/notifications
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "user_id": {{otherUserId}},
+  "task_id": {{taskId}},
+  "message": "You have been assigned to a new task",
+  "type": "assignment"
+}
+
+### Mark notification as read
+PATCH {{apiUrl}}/notifications/{{notificationId}}/read
+Authorization: Bearer {{token}}
+
+### Mark all notifications as read
+PATCH {{apiUrl}}/notifications/read-all
+Authorization: Bearer {{token}}
+
+### Delete notification
+DELETE {{apiUrl}}/notifications/{{notificationId}}
+Authorization: Bearer {{token}}
+
+
+### === Activity Tracking Routes (NEW Phase 2) ===
+
+### Get activities for a specific task
+GET {{apiUrl}}/activities/task/{{taskId}}
+Authorization: Bearer {{token}}
+
+### Get all activities for user's tasks
+GET {{apiUrl}}/activities
+Authorization: Bearer {{token}}
+
+### Get activities with pagination
+GET {{apiUrl}}/activities?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Get activities filtered by action
+GET {{apiUrl}}/activities?action=created
+Authorization: Bearer {{token}}
+
+### Get activities with all filters
+GET {{apiUrl}}/activities?action=updated&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Create activity manually
+POST {{apiUrl}}/activities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "task_id": {{taskId}},
+  "action": "updated",
+  "description": "Task details were manually updated"
+}
+
+
+### === Analytics Routes (NEW Phase 2) ===
+
+### Get tasks by status
+GET {{apiUrl}}/analytics/tasks-by-status
+Authorization: Bearer {{token}}
+
+### Get tasks by status with date range
+GET {{apiUrl}}/analytics/tasks-by-status?start_date=2024-01-01T00:00:00Z&end_date=2024-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Get tasks by priority
+GET {{apiUrl}}/analytics/tasks-by-priority
+Authorization: Bearer {{token}}
+
+### Get tasks by priority with date range
+GET {{apiUrl}}/analytics/tasks-by-priority?start_date=2024-01-01T00:00:00Z&end_date=2024-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Get completion rate (default: month)
+GET {{apiUrl}}/analytics/completion-rate
+Authorization: Bearer {{token}}
+
+### Get completion rate by day
+GET {{apiUrl}}/analytics/completion-rate?period=day
+Authorization: Bearer {{token}}
+
+### Get completion rate by week
+GET {{apiUrl}}/analytics/completion-rate?period=week
+Authorization: Bearer {{token}}
+
+### Get completion rate by month
+GET {{apiUrl}}/analytics/completion-rate?period=month
+Authorization: Bearer {{token}}
+
+### Get completion rate by year
+GET {{apiUrl}}/analytics/completion-rate?period=year
+Authorization: Bearer {{token}}
+
+### Get completion rate with date range
+GET {{apiUrl}}/analytics/completion-rate?period=month&start_date=2024-01-01T00:00:00Z&end_date=2024-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+### Get dashboard summary
+GET {{apiUrl}}/analytics/dashboard-summary
+Authorization: Bearer {{token}}
+
+
+### === Error Test Cases ===
+
+### Test invalid token
+GET {{apiUrl}}/tasks
+Authorization: Bearer invalid_token_here
+
+### Test missing token
+GET {{apiUrl}}/tasks
+
+### Test invalid task ID
+GET {{apiUrl}}/tasks/99999
+Authorization: Bearer {{token}}
+
+### Test invalid user ID
+GET {{apiUrl}}/users/99999
+Authorization: Bearer {{token}}
+
+### Test invalid status filter
+GET {{apiUrl}}/tasks?status=invalid_status
+Authorization: Bearer {{token}}
+
+### Test invalid priority filter
+GET {{apiUrl}}/tasks?priority=invalid
+Authorization: Bearer {{token}}
+
+### Test invalid date format
+GET {{apiUrl}}/tasks?start_date=invalid-date
+Authorization: Bearer {{token}}
+
+### Test invalid sort field
+GET {{apiUrl}}/tasks?sort_by=invalid_field
+Authorization: Bearer {{token}}
+
+### Test invalid pagination
+GET {{apiUrl}}/tasks?page=-1&limit=200
+Authorization: Bearer {{token}}
+
+### Test assigning task to non-existent user
+PUT {{apiUrl}}/tasks/{{taskId}}/assign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assigned_to": 99999
+}
+
+### Test creating notification with invalid type
+POST {{apiUrl}}/notifications
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "user_id": {{userId}},
+  "message": "Test",
+  "type": "invalid_type"
+}
+
+### Test creating activity with invalid action
+POST {{apiUrl}}/activities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "task_id": {{taskId}},
+  "action": "invalid_action"
+}
+
+### Test invalid analytics period
+GET {{apiUrl}}/analytics/completion-rate?period=invalid
+Authorization: Bearer {{token}}
+
+
+### === Rate Limiting Tests ===
+
+### Test rate limiting (make 100+ requests quickly)
+# Run this multiple times rapidly to test rate limiting
+GET {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+
+### Test auth rate limiting (make 5+ login attempts quickly)
+POST {{apiUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "wrongpassword"
+}
+
+
+### === Integration Test Scenarios ===
+
+### Scenario 1: Complete task workflow with notifications
+# Step 1: Create a task
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Integration Test Task",
+  "description": "Testing complete workflow",
+  "status": "new",
+  "priority": "high"
+}
+
+# Step 2: Assign task (should create notification)
+PUT {{apiUrl}}/tasks/{{taskId}}/assign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "assigned_to": {{otherUserId}}
+}
+
+# Step 3: Check notifications for assigned user
+GET {{apiUrl}}/notifications?read_status=false&type=assignment
+Authorization: Bearer {{token}}
+
+# Step 4: Update task status to completed (should create notification)
+PATCH {{apiUrl}}/tasks/{{taskId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "completed"
+}
+
+# Step 5: Check activities for the task
+GET {{apiUrl}}/activities/task/{{taskId}}
+Authorization: Bearer {{token}}
+
+# Step 6: Check analytics
+GET {{apiUrl}}/analytics/dashboard-summary
+Authorization: Bearer {{token}}
+
+
+### Scenario 2: Search and filter workflow
+# Step 1: Create multiple tasks with different properties
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Urgent High Priority Task",
+  "description": "This is an urgent task that needs immediate attention",
+  "status": "new",
+  "priority": "high",
+  "due_date": "2024-12-20T23:59:59Z"
+}
+
+# Step 2: Search for urgent tasks
+GET {{apiUrl}}/tasks?search=urgent
+Authorization: Bearer {{token}}
+
+# Step 3: Filter by high priority and upcoming due dates
+GET {{apiUrl}}/tasks?priority=high&due_date_start=2024-12-01T00:00:00Z&due_date_end=2024-12-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+# Step 4: Sort by due date
+GET {{apiUrl}}/tasks?sort_by=due_date&sort_order=ASC
+Authorization: Bearer {{token}}
+
+
+### Scenario 3: User collaboration workflow
+# Step 1: Get all users
+GET {{apiUrl}}/users
+Authorization: Bearer {{token}}
+
+# Step 2: Create task and assign to another user
+POST {{apiUrl}}/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Collaboration Task",
+  "description": "Task for team collaboration",
+  "assigned_to": {{otherUserId}}
+}
+
+# Step 3: Get tasks assigned to that user
+GET {{apiUrl}}/tasks/assigned-to/{{otherUserId}}
+Authorization: Bearer {{token}}
+
+# Step 4: Check notifications for assigned user
+GET {{apiUrl}}/notifications?type=assignment
+Authorization: Bearer {{token}}
+
+
+### Scenario 4: Analytics dashboard workflow
+# Step 1: Get tasks by status
+GET {{apiUrl}}/analytics/tasks-by-status
+Authorization: Bearer {{token}}
+
+# Step 2: Get tasks by priority
+GET {{apiUrl}}/analytics/tasks-by-priority
+Authorization: Bearer {{token}}
+
+# Step 3: Get completion rate
+GET {{apiUrl}}/analytics/completion-rate?period=month
+Authorization: Bearer {{token}}
+
+# Step 4: Get comprehensive dashboard summary
+GET {{apiUrl}}/analytics/dashboard-summary
+Authorization: Bearer {{token}}
+
+
+### === Notes ===
+# 
+# 1. Update @token variable after logging in
+# 2. Update @taskId, @userId, @otherUserId, @notificationId with actual IDs from responses
+# 3. Run migrations first: node db/run-migrations.js
+# 4. Make sure server is running: npm run dev
+# 5. Test endpoints in order for integration scenarios
+# 6. Check console logs for Winston logging output
+# 7. Check logs/ directory for error logs
+#
+

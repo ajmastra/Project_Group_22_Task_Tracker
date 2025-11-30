@@ -2,7 +2,7 @@
 @apiUrl = {{baseUrl}}/api
 
 ### Variables (update these after login)
-@token =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0LCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJpYXQiOjE3NjMwNzgyNzYsImV4cCI6MTc2MzE2NDY3Nn0.ygof_CHRVzPoNUQgcrdXbL9dsDP4oy7zKknvLiJkRTk
+@token =
 @taskId =37
 
 
