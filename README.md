@@ -74,10 +74,30 @@ Frontend runs on `http://localhost:3000`
 
 ## Testing
 
-Use `test-requests.http` with REST Client (VS Code) or Postman:
-1. Login to get a token
-2. Replace `{{token}}` in test file with your token
-3. Test endpoints
+### Phase 1 Testing
+Use `test-requests.http` with REST Client (VS Code) or Postman for basic Phase 1 endpoints.
+
+### Phase 2 Testing
+Use `test-phase2-requests.http` for comprehensive Phase 2 endpoint testing:
+
+1. **Run database migrations first:**
+   ```bash
+   node db/run-migrations.js
+   ```
+
+2. **Start the server:**
+   ```bash
+   npm run dev
+   ```
+
+3. **Test endpoints:**
+   - Open `test-phase2-requests.http` in VS Code with REST Client extension
+   - Login to get a token
+   - Replace `@token` variable with your token
+   - Update other variables (`@taskId`, `@userId`, etc.) as needed
+   - Test all endpoints
+
+4. **See `TESTING_GUIDE.md` for detailed testing instructions and verification checklist**
 
 ## Project Structure
 

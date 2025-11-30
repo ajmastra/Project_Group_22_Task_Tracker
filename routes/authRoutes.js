@@ -50,10 +50,18 @@ const loginValidation = [
 ];
 
 // --- VALIDATION ERROR HANDLER ---
+const { validationResult } = require('express-validator');
 function handleValidationErrors( req, res, next )
 {
-    const errors = [];
-    // for now, basic validation is done in controller
+    const errors = validationResult(req);
+    if ( !errors.isEmpty() )
+    {
+        return res.status(400).json({
+            success: false,
+            error: 'Validation failed',
+            errors: errors.array()
+        });
+    }
     next();
 }
 
