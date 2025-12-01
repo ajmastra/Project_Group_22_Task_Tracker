@@ -14,6 +14,7 @@ const userRoutes = require('./routes/userRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const commentRoutes = require('./routes/commentRoutes');
 
 // load environment variables
 dotenv.config();
@@ -58,13 +59,14 @@ app.get('/', ( req, res ) => {
         success: true,
         message: 'TaskHub API is running',
         version: '1.0.0',
-        endpoints: {
+            endpoints: {
             auth: '/api/auth',
             tasks: '/api/tasks',
             users: '/api/users',
             notifications: '/api/notifications',
             activities: '/api/activities',
-            analytics: '/api/analytics'
+            analytics: '/api/analytics',
+            comments: '/api/comments'
         }
     });
 });
@@ -79,6 +81,7 @@ app.use( '/api/users', apiLimiter, userRoutes );
 app.use( '/api/notifications', apiLimiter, notificationRoutes );
 app.use( '/api/activities', apiLimiter, activityRoutes );
 app.use( '/api/analytics', apiLimiter, analyticsRoutes );
+app.use( '/api/comments', apiLimiter, commentRoutes );
 
 // --- 404 HANDLER ---
 app.use(( req, res ) => {

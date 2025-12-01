@@ -2,7 +2,10 @@ import { Routes, Route } from "react-router-dom";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
-import TasksPage from "../pages/Tasks";     
+import TasksPage from "../pages/Tasks";
+import TaskDetail from "../pages/TaskDetail";
+import Profile from "../pages/Profile";
+import Analytics from "../pages/Analytics";
 import ProtectedRoute from "./ProtectedRoute"; 
 import Header from "../components/layout/Header";
 import Navbar from "../components/layout/Navbar";
@@ -19,12 +22,36 @@ export default function AppRouter() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* TASKS PAGE — PROTECTED */}
+        {/* PROTECTED ROUTES */}
         <Route
           path="/tasks"
           element={
             <ProtectedRoute>
               <TasksPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tasks/:id"
+          element={
+            <ProtectedRoute>
+              <TaskDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Analytics />
             </ProtectedRoute>
           }
         />
