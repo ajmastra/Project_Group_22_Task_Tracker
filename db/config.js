@@ -16,7 +16,7 @@ const pool = new Pool({
     },
     max: 20, // max connections in pool
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000, // increased from 2000ms to 10000ms (10 seconds)
 });
 
 // test the actual connection, and log success

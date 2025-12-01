@@ -42,9 +42,7 @@ export default function TaskForm({ initialData, onSubmit, submitting }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="task-form-section">
-      <h3>{initialData ? "Edit Task" : "Create Task"}</h3>
-
+    <form onSubmit={handleSubmit} className="task-form">
       <div className="form-group">
         <label className="form-label">Title</label>
         <input

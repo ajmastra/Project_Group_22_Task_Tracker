@@ -2,8 +2,10 @@ import React, { useEffect, useState, useMemo } from "react";
 import axiosInstance from "../utils/axiosInstance";
 import TaskForm from "../components/tasks/TaskForm";
 import TaskListWithDragDrop from "../components/tasks/TaskListWithDragDrop";
+import KanbanBoard from "../components/tasks/KanbanBoard";
 import FilterPanel from "../components/tasks/FilterPanel";
 import LoadingSkeleton from "../components/common/LoadingSkeleton";
+import Modal from "../components/common/Modal";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
@@ -11,6 +13,8 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("kanban"); // "kanban" or "list"
   
   // Filter and search state - updated for multi-select and date range
   const [filters, setFilters] = useState({
@@ -173,11 +177,58 @@ export default function TasksPage() {
       }
       await loadTasks();
       setEditingTask(null);
+      setIsModalOpen(false);
     } catch (err) {
       console.error("Task save error:", err);
     }
 
     setSubmitting(false);
+  };
+
+  // Handle status change from kanban drag and drop (optimistic update)
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      // Update local state immediately (optimistic update)
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          (task.task_id || task.id) === taskId
+            ? { ...task, status: newStatus }
+            : task
+        )
+      );
+
+      // Update backend (fire and forget, handle errors separately)
+      await axiosInstance.patch(`/tasks/${taskId}/status`, { status: newStatus });
+    } catch (err) {
+      console.error("Task status update error:", err);
+      // Revert optimistic update on error by reloading from server
+      await loadTasks();
+      // Could show error toast notification here
+      throw err; // Re-throw so KanbanBoard can handle it
+    }
+  };
+
+  // Handle tasks update from KanbanBoard (for optimistic updates)
+  const handleTasksUpdate = (updatedTasks) => {
+    setTasks(updatedTasks);
+  };
+
+  // Open modal for creating new task
+  const handleCreateTask = () => {
+    setEditingTask(null);
+    setIsModalOpen(true);
+  };
+
+  // Open modal for editing task
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setIsModalOpen(true);
+  };
+
+  // Close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingTask(null);
   };
 
   // Delete task
@@ -223,11 +274,39 @@ export default function TasksPage() {
 
   return (
     <div className="tasks-page">
-      <TaskForm
-        initialData={editingTask}
-        onSubmit={handleSubmitTask}
-        submitting={submitting}
-      />
+      {/* Header with Create Task Button and View Toggle */}
+      <div className="tasks-page-header">
+        <button className="create-task-button" onClick={handleCreateTask}>
+          + Create Task
+        </button>
+        <div className="view-mode-toggle">
+          <button
+            className={`view-mode-button ${viewMode === "kanban" ? "active" : ""}`}
+            onClick={() => setViewMode("kanban")}
+          >
+            Kanban
+          </button>
+          <button
+            className={`view-mode-button ${viewMode === "list" ? "active" : ""}`}
+            onClick={() => setViewMode("list")}
+          >
+            List
+          </button>
+        </div>
+      </div>
+
+      {/* Task Form Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={editingTask ? "Edit Task" : "Create Task"}
+      >
+        <TaskForm
+          initialData={editingTask}
+          onSubmit={handleSubmitTask}
+          submitting={submitting}
+        />
+      </Modal>
 
       {/* Advanced Filter Panel */}
       <FilterPanel
@@ -280,11 +359,21 @@ export default function TasksPage() {
         <div className="task-list">
           <LoadingSkeleton type="task" count={6} />
         </div>
+      ) : viewMode === "kanban" ? (
+        <KanbanBoard
+          tasks={filteredAndSortedTasks}
+          loading={false}
+          onEdit={handleEditTask}
+          onDelete={handleDelete}
+          assignedUsers={assignedUsers}
+          onStatusChange={handleStatusChange}
+          onTasksUpdate={handleTasksUpdate}
+        />
       ) : (
         <TaskListWithDragDrop
           tasks={filteredAndSortedTasks}
           loading={false}
-          onEdit={(task) => setEditingTask(task)}
+          onEdit={handleEditTask}
           onDelete={handleDelete}
           assignedUsers={assignedUsers}
           onReorder={(newTasks) => {
