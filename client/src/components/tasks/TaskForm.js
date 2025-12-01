@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
+import UserSelectDropdown from "./UserSelectDropdown";
 
 export default function TaskForm({ initialData, onSubmit, submitting }) {
+  const { user } = useContext(AuthContext);
   const [form, setForm] = useState({
     title: "",
     description: "",
     status: "new",
     priority: "medium",
     due_date: "",
+    assigned_to: null,
   });
 
   useEffect(() => {
@@ -17,6 +21,7 @@ export default function TaskForm({ initialData, onSubmit, submitting }) {
         status: initialData.status || "new",
         priority: initialData.priority || "medium",
         due_date: initialData.due_date ? initialData.due_date.split("T")[0] : "",
+        assigned_to: initialData.assigned_to || null,
       });
     } else {
       // Reset form when not editing
@@ -26,6 +31,7 @@ export default function TaskForm({ initialData, onSubmit, submitting }) {
         status: "new",
         priority: "medium",
         due_date: "",
+        assigned_to: null,
       });
     }
   }, [initialData]);
@@ -36,9 +42,7 @@ export default function TaskForm({ initialData, onSubmit, submitting }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="task-form-section">
-      <h3>{initialData ? "Edit Task" : "Create Task"}</h3>
-
+    <form onSubmit={handleSubmit} className="task-form">
       <div className="form-group">
         <label className="form-label">Title</label>
         <input
@@ -94,6 +98,17 @@ export default function TaskForm({ initialData, onSubmit, submitting }) {
           value={form.due_date}
           onChange={(e) => setForm({ ...form, due_date: e.target.value })}
           className="form-input"
+        />
+      </div>
+
+      <div className="form-group">
+        <UserSelectDropdown
+          label="Assign To"
+          value={form.assigned_to}
+          onChange={(userId) => setForm({ ...form, assigned_to: userId })}
+          placeholder="Unassigned"
+          excludeCurrentUser={false}
+          currentUserId={user?.user_id}
         />
       </div>
 

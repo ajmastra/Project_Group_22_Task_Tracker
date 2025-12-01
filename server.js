@@ -14,6 +14,7 @@ const userRoutes = require('./routes/userRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const commentRoutes = require('./routes/commentRoutes');
 
 // load environment variables
 dotenv.config();
@@ -38,6 +39,16 @@ async function testDatabaseConnection()
     // start try catch block on database connection test
     try
     {
+        // Check if required environment variables are set
+        const requiredEnvVars = ['SUPABASE_HOST', 'SUPABASE_DATABASE', 'SUPABASE_USER', 'SUPABASE_PASSWORD'];
+        const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+        
+        if (missingVars.length > 0) {
+            console.error('Missing required environment variables:', missingVars.join(', '));
+            console.error('Please ensure your .env file contains all required Supabase credentials.');
+            process.exit(1);
+        }
+
         // execute query
         await query('SELECT NOW()');
 
@@ -47,6 +58,13 @@ async function testDatabaseConnection()
     catch ( error )
     {
         console.error( 'Database connection test failed:', error.message );
+        if (error.message.includes('timeout')) {
+            console.error('This could be due to:');
+            console.error('  1. Incorrect database host/port in .env file');
+            console.error('  2. Network connectivity issues');
+            console.error('  3. Firewall blocking the connection');
+            console.error('  4. Database server is down or unreachable');
+        }
         process.exit(1);
     }
 }
@@ -58,13 +76,14 @@ app.get('/', ( req, res ) => {
         success: true,
         message: 'TaskHub API is running',
         version: '1.0.0',
-        endpoints: {
+            endpoints: {
             auth: '/api/auth',
             tasks: '/api/tasks',
             users: '/api/users',
             notifications: '/api/notifications',
             activities: '/api/activities',
-            analytics: '/api/analytics'
+            analytics: '/api/analytics',
+            comments: '/api/comments'
         }
     });
 });
@@ -79,6 +98,7 @@ app.use( '/api/users', apiLimiter, userRoutes );
 app.use( '/api/notifications', apiLimiter, notificationRoutes );
 app.use( '/api/activities', apiLimiter, activityRoutes );
 app.use( '/api/analytics', apiLimiter, analyticsRoutes );
+app.use( '/api/comments', apiLimiter, commentRoutes );
 
 // --- 404 HANDLER ---
 app.use(( req, res ) => {

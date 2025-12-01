@@ -1,7 +1,7 @@
 export default function Header() {
   return (
-    <header style={{ padding: "10px", background: "#eee" }}>
-      <h1>Task Tracker</h1>
+    <header className="app-header">
+      <h1 className="app-header-title">TaskHub</h1>
     </header>
   );
 }

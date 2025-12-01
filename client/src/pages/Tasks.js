@@ -1,25 +1,33 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axiosInstance from "../utils/axiosInstance";
 import TaskForm from "../components/tasks/TaskForm";
-import TaskList from "../components/tasks/TaskList";
+import TaskListWithDragDrop from "../components/tasks/TaskListWithDragDrop";
+import KanbanBoard from "../components/tasks/KanbanBoard";
+import FilterPanel from "../components/tasks/FilterPanel";
+import LoadingSkeleton from "../components/common/LoadingSkeleton";
+import Modal from "../components/common/Modal";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
+  const [assignedUsers, setAssignedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("kanban"); // "kanban" or "list"
   
-  // Filter and search state
+  // Filter and search state - updated for multi-select and date range
   const [filters, setFilters] = useState({
-    status: "",
-    priority: "",
-    dueDate: "",
+    status: [],
+    priority: [],
+    startDate: "",
+    endDate: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  // Load all tasks (no server-side filtering for now - we'll do client-side)
+  // Load all tasks and assigned users
   const loadTasks = async () => {
     setLoading(true);
     try {
@@ -27,6 +35,28 @@ export default function TasksPage() {
       // Backend returns: { success: true, data: { tasks: [...] } }
       const tasksArray = res.data.data?.tasks || res.data.tasks || [];
       setTasks(Array.isArray(tasksArray) ? tasksArray : []);
+
+      // Load assigned users
+      const userIds = [
+        ...new Set(
+          tasksArray
+            .map((task) => task.assigned_to)
+            .filter((id) => id !== null && id !== undefined)
+        ),
+      ];
+
+      if (userIds.length > 0) {
+        try {
+          const usersResponse = await axiosInstance.get("/users");
+          const allUsers = usersResponse.data.data?.users || usersResponse.data.users || [];
+          const assignedUsersMap = allUsers.filter((user) =>
+            userIds.includes(user.user_id)
+          );
+          setAssignedUsers(assignedUsersMap);
+        } catch (err) {
+          console.error("Error fetching assigned users:", err);
+        }
+      }
     } catch (err) {
       console.error("Error fetching tasks:", err);
       setTasks([]); // Ensure tasks is always an array on error
@@ -42,28 +72,29 @@ export default function TasksPage() {
   const filteredAndSortedTasks = useMemo(() => {
     let result = [...tasks];
 
-    // Apply status filter
-    if (filters.status) {
-      result = result.filter((task) => task.status === filters.status);
+    // Apply status filter (multi-select)
+    if (filters.status && filters.status.length > 0) {
+      result = result.filter((task) => filters.status.includes(task.status));
     }
 
-    // Apply priority filter
-    if (filters.priority) {
+    // Apply priority filter (multi-select)
+    if (filters.priority && filters.priority.length > 0) {
       const priorityMap = { low: 1, medium: 2, high: 3 };
-      const priorityValue = priorityMap[filters.priority];
       result = result.filter((task) => {
         // Handle both integer (1,2,3) and string ("low","medium","high") priorities
         const taskPriority = task.priority;
         if (typeof taskPriority === "number") {
-          return taskPriority === priorityValue;
+          return filters.priority.some((p) => priorityMap[p] === taskPriority);
         } else if (typeof taskPriority === "string") {
-          return taskPriority.toLowerCase() === filters.priority.toLowerCase();
+          return filters.priority.some(
+            (p) => taskPriority.toLowerCase() === p.toLowerCase()
+          );
         }
         return false;
       });
     }
 
-    // Apply search filter
+    // Apply search filter (real-time)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -73,13 +104,25 @@ export default function TasksPage() {
       );
     }
 
-    // Apply due date filter
-    if (filters.dueDate) {
-      const filterDate = new Date(filters.dueDate).toISOString().split("T")[0];
+    // Apply due date range filter
+    if (filters.startDate || filters.endDate) {
       result = result.filter((task) => {
         if (!task.due_date) return false;
         const taskDate = new Date(task.due_date).toISOString().split("T")[0];
-        return taskDate === filterDate;
+        const taskDateObj = new Date(taskDate);
+        
+        if (filters.startDate && filters.endDate) {
+          const startDateObj = new Date(filters.startDate);
+          const endDateObj = new Date(filters.endDate);
+          return taskDateObj >= startDateObj && taskDateObj <= endDateObj;
+        } else if (filters.startDate) {
+          const startDateObj = new Date(filters.startDate);
+          return taskDateObj >= startDateObj;
+        } else if (filters.endDate) {
+          const endDateObj = new Date(filters.endDate);
+          return taskDateObj <= endDateObj;
+        }
+        return true;
       });
     }
 
@@ -119,7 +162,7 @@ export default function TasksPage() {
     });
 
     return result;
-  }, [tasks, filters.status, filters.priority, filters.dueDate, searchQuery, sortBy, sortOrder]);
+  }, [tasks, filters.status, filters.priority, filters.startDate, filters.endDate, searchQuery, sortBy, sortOrder]);
 
   // Create or update task
   const handleSubmitTask = async (formData) => {
@@ -134,11 +177,58 @@ export default function TasksPage() {
       }
       await loadTasks();
       setEditingTask(null);
+      setIsModalOpen(false);
     } catch (err) {
       console.error("Task save error:", err);
     }
 
     setSubmitting(false);
+  };
+
+  // Handle status change from kanban drag and drop (optimistic update)
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      // Update local state immediately (optimistic update)
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          (task.task_id || task.id) === taskId
+            ? { ...task, status: newStatus }
+            : task
+        )
+      );
+
+      // Update backend (fire and forget, handle errors separately)
+      await axiosInstance.patch(`/tasks/${taskId}/status`, { status: newStatus });
+    } catch (err) {
+      console.error("Task status update error:", err);
+      // Revert optimistic update on error by reloading from server
+      await loadTasks();
+      // Could show error toast notification here
+      throw err; // Re-throw so KanbanBoard can handle it
+    }
+  };
+
+  // Handle tasks update from KanbanBoard (for optimistic updates)
+  const handleTasksUpdate = (updatedTasks) => {
+    setTasks(updatedTasks);
+  };
+
+  // Open modal for creating new task
+  const handleCreateTask = () => {
+    setEditingTask(null);
+    setIsModalOpen(true);
+  };
+
+  // Open modal for editing task
+  const handleEditTask = (task) => {
+    setEditingTask(task);
+    setIsModalOpen(true);
+  };
+
+  // Close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingTask(null);
   };
 
   // Delete task
@@ -154,79 +244,82 @@ export default function TasksPage() {
   };
 
   const handleClearFilters = () => {
-    setFilters({ status: "", priority: "", dueDate: "" });
+    setFilters({ status: [], priority: [], startDate: "", endDate: "" });
     setSearchQuery("");
     setSortBy("created_at");
     setSortOrder("desc");
   };
 
+  const handleRemoveFilter = (filterType, filterValue) => {
+    if (filterType === "status") {
+      setFilters({
+        ...filters,
+        status: filters.status.filter((s) => s !== filterValue),
+      });
+    } else if (filterType === "priority") {
+      setFilters({
+        ...filters,
+        priority: filters.priority.filter((p) => p !== filterValue),
+      });
+    } else if (filterType === "dateRange") {
+      setFilters({
+        ...filters,
+        startDate: "",
+        endDate: "",
+      });
+    } else if (filterType === "search") {
+      setSearchQuery("");
+    }
+  };
+
   return (
     <div className="tasks-page">
-      <TaskForm
-        initialData={editingTask}
-        onSubmit={handleSubmitTask}
-        submitting={submitting}
+      {/* Header with Create Task Button and View Toggle */}
+      <div className="tasks-page-header">
+        <button className="create-task-button" onClick={handleCreateTask}>
+          + Create Task
+        </button>
+        <div className="view-mode-toggle">
+          <button
+            className={`view-mode-button ${viewMode === "kanban" ? "active" : ""}`}
+            onClick={() => setViewMode("kanban")}
+          >
+            Kanban
+          </button>
+          <button
+            className={`view-mode-button ${viewMode === "list" ? "active" : ""}`}
+            onClick={() => setViewMode("list")}
+          >
+            List
+          </button>
+        </div>
+      </div>
+
+      {/* Task Form Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={editingTask ? "Edit Task" : "Create Task"}
+      >
+        <TaskForm
+          initialData={editingTask}
+          onSubmit={handleSubmitTask}
+          submitting={submitting}
+        />
+      </Modal>
+
+      {/* Advanced Filter Panel */}
+      <FilterPanel
+        filters={filters}
+        searchQuery={searchQuery}
+        onFilterChange={setFilters}
+        onSearchChange={setSearchQuery}
+        onRemoveFilter={handleRemoveFilter}
+        onClearAll={handleClearFilters}
       />
 
-      {/* Filter and Search Controls */}
+      {/* Sorting Controls */}
       <div className="filter-section">
-        <h3>Filter & Search Tasks</h3>
-        
-        {/* Search */}
-        <div className="filter-group" style={{ marginBottom: 16 }}>
-          <label className="filter-label">Search:</label>
-          <input
-            type="text"
-            placeholder="Search by title or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="filter-input"
-          />
-        </div>
-
-        {/* Filters Row */}
-        <div className="filter-grid">
-          <div className="filter-group">
-            <label className="filter-label">Status:</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="filter-select"
-            >
-              <option value="">All Statuses</option>
-              <option value="new">New</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label className="filter-label">Priority:</label>
-            <select
-              value={filters.priority}
-              onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-              className="filter-select"
-            >
-              <option value="">All Priorities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label className="filter-label">Due Date:</label>
-            <input
-              type="date"
-              value={filters.dueDate}
-              onChange={(e) => setFilters({ ...filters, dueDate: e.target.value })}
-              className="filter-input"
-            />
-          </div>
-        </div>
-
-        {/* Sorting Controls */}
         <div className="filter-grid">
           <div className="filter-group">
             <label className="filter-label">Sort By:</label>
@@ -256,25 +349,39 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {/* Clear Filters Button */}
-        {(filters.status || filters.priority || filters.dueDate || searchQuery) && (
-          <button onClick={handleClearFilters} className="filter-button">
-            Clear All Filters
-          </button>
-        )}
-
         {/* Results Count */}
         <div className="results-count">
           Showing {filteredAndSortedTasks.length} of {tasks.length} task(s)
         </div>
       </div>
 
-      <TaskList
-        tasks={filteredAndSortedTasks}
-        loading={loading}
-        onEdit={(task) => setEditingTask(task)}
-        onDelete={handleDelete}
-      />
+      {loading ? (
+        <div className="task-list">
+          <LoadingSkeleton type="task" count={6} />
+        </div>
+      ) : viewMode === "kanban" ? (
+        <KanbanBoard
+          tasks={filteredAndSortedTasks}
+          loading={false}
+          onEdit={handleEditTask}
+          onDelete={handleDelete}
+          assignedUsers={assignedUsers}
+          onStatusChange={handleStatusChange}
+          onTasksUpdate={handleTasksUpdate}
+        />
+      ) : (
+        <TaskListWithDragDrop
+          tasks={filteredAndSortedTasks}
+          loading={false}
+          onEdit={handleEditTask}
+          onDelete={handleDelete}
+          assignedUsers={assignedUsers}
+          onReorder={(newTasks) => {
+            // Update local order (client-side only, could be saved to backend)
+            setTasks(newTasks);
+          }}
+        />
+      )}
     </div>
   );
 }

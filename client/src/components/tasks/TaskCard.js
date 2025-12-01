@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function TaskCard({ task, onEdit, onDelete }) {
+export default function TaskCard({ task, onEdit, onDelete, assignedUser }) {
   return (
     <div className="task-card">
       <h3>{task.title}</h3>
@@ -17,8 +17,16 @@ export default function TaskCard({ task, onEdit, onDelete }) {
           : task.priority}
       </p>
       <p><strong>Due:</strong> {task.due_date ? task.due_date.split("T")[0] : "No due date"}</p>
+      {assignedUser && (
+        <p>
+          <strong>Assigned to:</strong>{" "}
+          {`${assignedUser.first_name || ""} ${assignedUser.last_name || ""}`.trim() ||
+            assignedUser.email ||
+            "Unknown"}
+        </p>
+      )}
 
-      <div className="task-card-actions">
+      <div className="task-card-actions" onClick={(e) => e.stopPropagation()}>
         <button onClick={() => onEdit(task)} className="task-button task-button-edit">
           Edit
         </button>
