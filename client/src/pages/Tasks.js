@@ -236,10 +236,20 @@ export default function TasksPage() {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
 
     try {
+      // Optimistically remove task from UI
+      setTasks((prevTasks) => 
+        prevTasks.filter((task) => (task.task_id || task.id) !== taskId)
+      );
+      
+      // Delete from backend
       await axiosInstance.delete(`/tasks/${taskId}`);
-      loadTasks();
+      
+      // Reload to ensure consistency
+      await loadTasks();
     } catch (err) {
       console.error("Task delete error:", err);
+      // Reload on error to get correct state
+      await loadTasks();
     }
   };
 

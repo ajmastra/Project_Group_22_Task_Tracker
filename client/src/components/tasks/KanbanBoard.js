@@ -53,8 +53,8 @@ function SortableTaskItem({ task, assignedUser, onEdit, onDelete, onTaskClick, i
 
   // Handle click - only navigate if not dragging
   const handleClick = (e) => {
-    // Don't navigate if we just dragged
-    if (!isDragging) {
+    // Don't navigate if we just dragged or if clicking on buttons
+    if (!isDragging && !e.target.closest('.task-card-actions')) {
       onTaskClick();
     }
   };

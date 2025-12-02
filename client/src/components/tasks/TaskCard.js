@@ -27,10 +27,22 @@ export default function TaskCard({ task, onEdit, onDelete, assignedUser }) {
       )}
 
       <div className="task-card-actions" onClick={(e) => e.stopPropagation()}>
-        <button onClick={() => onEdit(task)} className="task-button task-button-edit">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(task);
+          }} 
+          className="task-button task-button-edit"
+        >
           Edit
         </button>
-        <button onClick={() => onDelete(task.task_id || task.id)} className="task-button task-button-delete">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(task.task_id || task.id);
+          }} 
+          className="task-button task-button-delete"
+        >
           Delete
         </button>
       </div>
