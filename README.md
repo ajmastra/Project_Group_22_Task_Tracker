@@ -1,6 +1,6 @@
 # TaskHub
 
-Full-stack task management application built with PERN stack (PostgreSQL, Express, React, Node.js).
+Full-stack task management application built with PERN stack (PostgreSQL, Express, React, Node.js). Features include kanban board drag-and-drop, real-time notifications, activity tracking, comments, analytics dashboard, and dark mode support.
 
 ## Quick Start
 
@@ -32,7 +32,14 @@ PORT=5000
 
 ### 3. Setup Database
 
-Run `db/schema.sql` in your Supabase SQL editor to create tables.
+**Option 1: Run migrations (Recommended)**
+```bash
+npm run migrate
+```
+This will create all necessary tables including notifications, activities, comments, and indexes.
+
+**Option 2: Manual setup**
+Run `db/schema.sql` in your Supabase SQL editor to create base tables, then run migrations for additional features.
 
 ### 4. Seed Test Data (Optional)
 ```bash
@@ -44,7 +51,7 @@ Test credentials: `test@example.com` / `password123`
 
 **Terminal 1 - Backend:**
 ```bash
-npm run dev    # Development mode
+npm run dev    # Development mode with nodemon
 ```
 Backend runs on `http://localhost:5000`
 
@@ -55,6 +62,18 @@ npm start
 ```
 Frontend runs on `http://localhost:3000`
 
+## Key Features
+
+- **Kanban Board View** - Drag and drop tasks between status columns (New, In Progress, Completed, Cancelled)
+- **List View** - Traditional list view with sorting and filtering
+- **Task Management** - Create, edit, delete tasks with priority levels and due dates
+- **Comments** - Add comments to tasks for collaboration
+- **Activity Timeline** - Track all task changes and updates
+- **Notifications** - Real-time notifications for task assignments and completions
+- **Analytics Dashboard** - Visualize productivity metrics and task statistics
+- **Dark Mode** - Full dark mode support throughout the application
+- **User Management** - Assign tasks to team members
+
 ## API Endpoints
 
 ### Authentication
@@ -63,26 +82,29 @@ Frontend runs on `http://localhost:3000`
 - `GET /api/auth/profile` - Get user profile (protected)
 
 ### Tasks (All require authentication)
-- `GET /api/tasks` - Get all tasks (filter: `?status=new&priority=high`)
+- `GET /api/tasks` - Get all tasks (supports filtering, sorting, pagination)
 - `GET /api/tasks/:id` - Get single task
 - `POST /api/tasks` - Create task
 - `PUT /api/tasks/:id` - Update task
-- `PATCH /api/tasks/:id/status` - Update status only
+- `PATCH /api/tasks/:id/status` - Update status only (used for drag-and-drop)
 - `DELETE /api/tasks/:id` - Delete task
+
+### Additional Endpoints
+- `GET /api/comments/task/:taskId` - Get comments for a task
+- `POST /api/comments/task/:taskId` - Add comment to task
+- `GET /api/activities/task/:taskId` - Get activity history for a task
+- `GET /api/notifications` - Get user notifications
+- `GET /api/analytics/*` - Analytics endpoints
 
 **Note:** Priority accepts integers (1=low, 2=medium, 3=high) or strings ('low', 'medium', 'high').
 
 ## Testing
 
-### Phase 1 Testing
-Use `test-requests.http` with REST Client (VS Code) or Postman for basic Phase 1 endpoints.
+Use `test-requests.http` or `test-phase2-requests.http` with REST Client (VS Code) or Postman.
 
-### Phase 2 Testing
-Use `test-phase2-requests.http` for comprehensive Phase 2 endpoint testing:
-
-1. **Run database migrations first:**
+1. **Run database migrations:**
    ```bash
-   node db/run-migrations.js
+   npm run migrate
    ```
 
 2. **Start the server:**
@@ -91,32 +113,36 @@ Use `test-phase2-requests.http` for comprehensive Phase 2 endpoint testing:
    ```
 
 3. **Test endpoints:**
-   - Open `test-phase2-requests.http` in VS Code with REST Client extension
+   - Open test files in VS Code with REST Client extension
    - Login to get a token
    - Replace `@token` variable with your token
-   - Update other variables (`@taskId`, `@userId`, etc.) as needed
    - Test all endpoints
-
-4. **See `TESTING_GUIDE.md` for detailed testing instructions and verification checklist**
 
 ## Project Structure
 
 ```
 ├── server.js              # Backend entry point
 ├── db/                     # Database files
-│   ├── config.js
-│   ├── schema.sql
-│   └── seed.js
+│   ├── config.js          # Database connection
+│   ├── schema.sql          # Base schema
+│   ├── migrations/         # Database migrations
+│   ├── run-migrations.js   # Migration runner
+│   └── seed.js             # Seed script
 ├── routes/                 # API routes
 ├── controllers/            # Business logic
-├── middleware/             # Auth & error handling
-├── utils/                  # Utilities
+├── middleware/             # Auth, error handling, rate limiting
+├── utils/                  # Utilities (logger)
 └── client/                 # React frontend
     ├── src/
     │   ├── components/     # React components
-    │   ├── pages/           # Page components
-    │   ├── services/        # API services
-    │   └── router/          # Routing
+    │   │   ├── tasks/      # Task components (Kanban, List, Forms)
+    │   │   ├── analytics/  # Analytics charts
+    │   │   ├── notifications/ # Notification components
+    │   │   └── common/     # Shared components (Modal, etc.)
+    │   ├── pages/          # Page components
+    │   ├── services/       # API services
+    │   ├── context/        # React contexts (Auth, Theme)
+    │   └── router/         # Routing
     └── public/
 ```
 
@@ -138,6 +164,18 @@ Use `test-phase2-requests.http` for comprehensive Phase 2 endpoint testing:
 }
 ```
 
+## Available Scripts
+
+**Backend:**
+- `npm start` - Start production server
+- `npm run dev` - Start development server with nodemon
+- `npm run migrate` - Run database migrations
+- `npm run seed` - Seed database with test data
+
+**Frontend:**
+- `npm start` - Start development server
+- `npm run build` - Build for production
+
 ## Security
 
 - Passwords hashed with bcryptjs
@@ -145,3 +183,5 @@ Use `test-phase2-requests.http` for comprehensive Phase 2 endpoint testing:
 - Users can only access their own tasks
 - Input validation on all endpoints
 - Parameterized queries prevent SQL injection
+- Rate limiting on API endpoints
+- Input sanitization middleware
