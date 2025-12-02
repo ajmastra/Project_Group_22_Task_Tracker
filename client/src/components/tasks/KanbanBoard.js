@@ -1,3 +1,4 @@
+// necessary imports
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -18,6 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import TaskCard from "./TaskCard";
 
+// statuses for the kanban board
 const STATUSES = [
   { id: "new", label: "New", color: "#1976d2" },
   { id: "in_progress", label: "In Progress", color: "#f57c00" },
@@ -25,6 +27,7 @@ const STATUSES = [
   { id: "cancelled", label: "Cancelled", color: "#d32f2f" },
 ];
 
+// SortableTaskItem component for the kanban board
 function SortableTaskItem({ task, assignedUser, onEdit, onDelete, onTaskClick, isUpdating }) {
   const taskId = task.task_id || task.id;
   const {
@@ -80,6 +83,7 @@ function SortableTaskItem({ task, assignedUser, onEdit, onDelete, onTaskClick, i
   );
 }
 
+// KanbanColumn component for the kanban board
 function KanbanColumn({ status, tasks, assignedUsers, onEdit, onDelete, onTaskClick, updatingTaskId }) {
   const { setNodeRef: setColumnRef, isOver } = useDroppable({
     id: status.id,
@@ -138,6 +142,7 @@ function KanbanColumn({ status, tasks, assignedUsers, onEdit, onDelete, onTaskCl
     </div>
   );
 }
+
 
 export default function KanbanBoard({
   tasks,
