@@ -1071,12 +1071,30 @@ code {
   font-family: inherit;
   resize: vertical;
   min-height: 80px;
+  background: white;
+  color: #333;
+}
+
+.dark-mode .comment-input-textarea {
+  background: #1a1a1a;
+  border-color: #404040;
+  color: #e0e0e0;
+}
+
+.dark-mode .comment-input-textarea::placeholder {
+  color: #666;
 }
 
 .comment-input-textarea:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.dark-mode .comment-input-textarea:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  background: #1a1a1a;
 }
 
 .comment-error {
@@ -1095,6 +1113,10 @@ code {
 .comment-input-counter {
   font-size: 12px;
   color: #666;
+}
+
+.dark-mode .comment-input-counter {
+  color: #999;
 }
 
 .comment-submit-button {
@@ -1303,6 +1325,10 @@ code {
   background: #e0e0e0;
 }
 
+.dark-mode .activity-item::before {
+  background: #404040;
+}
+
 .activity-item:last-child::before {
   display: none;
 }
@@ -1317,6 +1343,11 @@ code {
   flex-shrink: 0;
   margin-top: 4px;
   z-index: 1;
+}
+
+.dark-mode .activity-item-dot {
+  border-color: #2d2d2d;
+  box-shadow: 0 0 0 2px #667eea;
 }
 
 .activity-item-content {
@@ -1355,6 +1386,12 @@ code {
   padding: 8px;
   background: #f5f5f5;
   border-radius: 4px;
+}
+
+.dark-mode .activity-item-description {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #404040;
 }
 
 /* Task Detail Page */
@@ -1450,9 +1487,22 @@ code {
   border-radius: 8px;
 }
 
+.dark-mode .task-detail-info-grid {
+  background: #1a1a1a;
+  border: 1px solid #404040;
+}
+
 .task-detail-info-item {
   color: #333;
   font-size: 14px;
+}
+
+.dark-mode .task-detail-info-item {
+  color: #e0e0e0;
+}
+
+.dark-mode .task-detail-info-item strong {
+  color: #e0e0e0;
 }
 
 .task-detail-sidebar {
@@ -3136,7 +3186,6 @@ code {
 .dark-mode .comment-date,
 .dark-mode .activity-item-time,
 .dark-mode .activity-item-user,
-.dark-mode .activity-item-description,
 .dark-mode .task-detail-meta,
 .dark-mode .profile-user-joined,
 .dark-mode .notification-time,
